@@ -6,8 +6,9 @@ App móvil para programar un timbre escolar automático conectado por Bluetooth 
 
 | Carpeta | Contenido |
 |---|---|
-| [`app-inventor/`](app-inventor/) | **App lista para MIT App Inventor** (`TimbreEscolar.aia`) e instrucciones |
+| [`kodular/`](kodular/) | ⭐ **App para Kodular** (`TimbreEscolar_Kodular.aia`): tarjetas redondeadas, íconos de editar y borrar |
+| [`app-inventor/`](app-inventor/) | App para MIT App Inventor (`TimbreEscolar.aia`) e instrucciones |
 | [`esp32/TimbreEscolar/`](esp32/TimbreEscolar/) | Código Arduino para el ESP32 (Bluetooth clásico + relé) |
 | [`docs/guia-diseno-ui.md`](docs/guia-diseno-ui.md) | Guía de diseño UI/UX (colores, tipografía, medidas, íconos) |
 
-Empieza por [`app-inventor/README.md`](app-inventor/README.md).
+Empieza por [`kodular/README.md`](kodular/README.md).

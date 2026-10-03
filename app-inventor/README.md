@@ -6,7 +6,7 @@ Proyecto completo listo para importar en MIT App Inventor. Ya trae el diseño de
 |---|---|
 | **`TimbreEscolar.aia`** | **El proyecto para importar en App Inventor** |
 | `vista-previa.png` | Cómo se ve la pantalla principal |
-| `assets/` | Íconos PNG (campana, alarma y Bluetooth conectado/desconectado) y fuente **Poppins** (`.ttf`, licencia OFL en `OFL-Poppins.txt`) |
+| `assets/` | Íconos PNG (campana, alarma y Bluetooth conectado/desconectado), fuente **Poppins** (licencia OFL en `OFL-Poppins.txt`) y *Material Icons* para la versión Kodular (licencia Apache 2.0 en `LICENSE-MaterialIcons.txt`) |
 | `generar_aia.py` | Script que crea el `.aia`. Solo hace falta si quieres modificarlo desde código |
 | [`../esp32/TimbreEscolar/TimbreEscolar.ino`](../esp32/TimbreEscolar/TimbreEscolar.ino) | Código para el ESP32 que entiende los mensajes de la app |
 
