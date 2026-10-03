@@ -6,7 +6,7 @@
   Mensajes que envía la app (una línea por mensaje, terminada en \n):
     HORA=2026-10-03 07:30:00       -> ajusta el reloj del ESP32
     HORARIOS=07:00,09:15,12:30     -> reemplaza la lista de horarios
-    PROBAR                         -> hace sonar el timbre una vez
+    TOCAR                          -> hace sonar el timbre ahora (botón "Tocar ahora")
 
   Requisitos: un ESP32 "clásico" (ESP32-WROOM / DevKit). Los modelos
   ESP32-S2, S3, C3 y C6 NO tienen Bluetooth clásico.
@@ -95,9 +95,9 @@ void procesarLinea(String msg) {
     prefs.putString("horarios", lista);  // se conserva aunque se apague
     cargarHorarios(lista);
     SerialBT.printf("OK %d HORARIOS\n", totalHorarios);
-  } else if (msg == "PROBAR") {
+  } else if (msg == "TOCAR" || msg == "PROBAR") {
     sonarTimbre();
-    SerialBT.println("OK PROBAR");
+    SerialBT.println("OK TOCAR");
   }
   Serial.println("Recibido: " + msg);
 }

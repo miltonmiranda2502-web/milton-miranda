@@ -2,7 +2,7 @@
 """Genera TimbreEscolar.aia (proyecto de MIT App Inventor).
 
 Construye el diseño de la pantalla (Screen1.scm), los bloques (Screen1.bky)
-y empaqueta los íconos de assets/ en un .aia listo para importar en
+y empaqueta los íconos y fuentes de assets/ en un .aia listo para importar en
 https://ai2.appinventor.mit.edu  (Proyectos > Importar proyecto .aia).
 
 Uso:  python3 generar_aia.py
@@ -17,7 +17,14 @@ AQUI = os.path.dirname(os.path.abspath(__file__))
 PROYECTO = "TimbreEscolar"
 USUARIO = "ai_timbre"
 SALIDA = os.path.join(AQUI, PROYECTO + ".aia")
-ASSETS = ["ic_timbre.png", "bt_on.png", "bt_off.png"]
+
+# Fuentes Poppins (Google Fonts, licencia OFL)
+F_REG = "Poppins-Regular.ttf"
+F_MED = "Poppins-Medium.ttf"
+F_SEMI = "Poppins-SemiBold.ttf"
+F_BOLD = "Poppins-Bold.ttf"
+ASSETS = ["ic_timbre.png", "ic_alarma.png", "bt_on.png", "bt_off.png",
+          F_REG, F_MED, F_SEMI, F_BOLD]
 
 # Versiones de App Inventor (nb199+). Son iguales o menores a las del
 # servidor actual; si el servidor es más nuevo, actualiza el proyecto solo.
@@ -32,7 +39,6 @@ VERSIONES = {
 
 # ---------------------------------------------------------------- colores
 AZUL = "&HFF0033A0"
-AZUL_OSCURO = "&HFF002270"
 AZUL_TINTE = "&HFFE6EBF5"
 AMARILLO = "&HFFFFD100"
 BLANCO = "&HFFFFFFFF"
@@ -43,11 +49,18 @@ DIVISOR = "&HFFE2E8F0"
 ROJO_TEXTO = "&HFFC53030"
 NINGUNO = "&H00FFFFFF"
 BLANCO_80 = "&HCCFFFFFF"
+BLANCO_70 = "&HB3FFFFFF"
+VIDRIO = "&H24FFFFFF"     # blanco al 14 %: "tarjetas de vidrio" del encabezado
 
-LLENAR = "-2"        # Fill parent
-AUTO = "-1"          # Automatic
-ANCHO_TARJETA = "-1092"   # 92 % del ancho de la pantalla
-ANCHO_INTERNO = "-1090"   # 90 % del ancho de la tarjeta
+# En App Inventor los porcentajes son del ANCHO DE LA PANTALLA (no del padre).
+LLENAR = "-2"
+ANCHO_TARJETA = "-1092"   # tarjeta: 92 % -> 4 % de margen a cada lado
+ANCHO_INTERNO = "-1084"   # contenido: 84 % -> 4 % de relleno dentro de la tarjeta
+
+# Textos de las opciones de los diálogos (los bloques los comparan)
+OPC_EDITAR = "✏️ Editar"
+OPC_ELIMINAR = "🗑 Eliminar"
+OPC_TOCAR = "🔔 Tocar"
 
 # ================================================================ diseño
 _uuid = itertools.count(1000)
@@ -76,119 +89,156 @@ def espacio(alto=None, ancho=None, color=None):
     return comp("Label", "Espacio%d" % next(_esp), **props)
 
 
-def etiqueta(nombre, texto, tam=14, negrita=False, color=TEXTO, **extra):
-    props = {"Text": texto, "FontSize": tam, "TextColor": color}
-    if negrita:
-        props["FontBold"] = "True"
+def etiqueta(nombre, texto, tam=14, fuente=F_REG, color=TEXTO, **extra):
+    props = {"Text": texto, "FontSize": tam, "FontTypeface": fuente, "TextColor": color,
+             "HasMargins": "False"}
     props.update(extra)
     return comp("Label", nombre, **props)
 
 
+def boton(tipo, nombre, texto, tam, fondo, color, **extra):
+    props = {"Text": texto, "FontSize": tam, "FontTypeface": F_SEMI, "TextColor": color,
+             "BackgroundColor": fondo, "Shape": "1"}
+    props.update(extra)
+    return comp(tipo, nombre, **props)
+
+
+def tile(nombre, titulo, valor, detalle, color_valor):
+    return comp("VerticalArrangement", nombre, [
+        espacio(alto=10),
+        comp("HorizontalArrangement", nombre + "Fila", [
+            espacio(ancho=12),
+            comp("VerticalArrangement", nombre + "Textos", [
+                etiqueta("Lbl%sTitulo" % nombre, titulo, 10, F_MED, BLANCO_70),
+                etiqueta("Lbl%sValor" % nombre, valor, 24, F_BOLD, color_valor),
+                etiqueta("Lbl%sDetalle" % nombre, detalle, 11, F_REG, BLANCO_80),
+            ]),
+        ]),
+        espacio(alto=10),
+    ], Width="-1044", BackgroundColor=VIDRIO)
+
+
 def diseno():
     encabezado = comp("VerticalArrangement", "Encabezado", [
-        espacio(alto=18),
+        espacio(alto=16),
         comp("HorizontalArrangement", "FilaTitulo", [
-            espacio(ancho=20),
-            comp("Image", "ImgLogo", Picture="ic_timbre.png", Width=64, Height=64,
+            espacio(ancho=16),
+            comp("Image", "ImgLogo", Picture="ic_timbre.png", Width=48, Height=48,
                  ScalePictureToFit="True"),
-            espacio(ancho=14),
+            espacio(ancho=12),
             comp("VerticalArrangement", "BloqueTitulo", [
-                etiqueta("LblTitulo", "Timbre Escolar", 22, True, BLANCO, HasMargins="False"),
-                espacio(alto=2),
-                etiqueta("LblSubtitulo", "Control de horarios por Bluetooth", 14,
-                         color=BLANCO_80, HasMargins="False"),
+                etiqueta("LblTitulo", "Timbre Escolar", 20, F_BOLD, BLANCO),
+                etiqueta("LblSubtitulo", "Control de horarios por Bluetooth", 12, F_REG,
+                         BLANCO_80),
             ]),
         ], Width=LLENAR, AlignVertical="2"),
         espacio(alto=14),
+        comp("HorizontalArrangement", "FilaTiles", [
+            tile("Hora", "HORA ACTUAL", "--:--:--", "", BLANCO),
+            espacio(ancho=10),
+            tile("Proximo", "PRÓXIMO TIMBRE", "--:--", "Sin horarios", AMARILLO),
+        ], Width=LLENAR, AlignHorizontal="3"),
+        espacio(alto=12),
         comp("HorizontalArrangement", "FilaBadge", [
-            espacio(ancho=20),
+            espacio(ancho=16),
             comp("HorizontalArrangement", "BadgeBT", [
                 espacio(ancho=10),
-                comp("Image", "ImgBT", Picture="bt_off.png", Width=20, Height=20,
+                comp("Image", "ImgBT", Picture="bt_off.png", Width=18, Height=18,
                      ScalePictureToFit="True"),
-                comp("ListPicker", "LP_Conectar", Text="Desconectado · Toca para conectar",
-                     FontSize=13, FontBold="True", TextColor=ROJO_TEXTO,
+                comp("ListPicker", "LP_Conectar", Text="Desconectado · Conectar",
+                     FontSize=12, FontTypeface=F_MED, TextColor=ROJO_TEXTO,
                      BackgroundColor=NINGUNO, Title="Elige tu ESP32",
                      ItemBackgroundColor=BLANCO, ItemTextColor=TEXTO),
-                espacio(ancho=6),
             ], BackgroundColor=BLANCO, AlignVertical="2"),
-        ], Width=LLENAR),
-        espacio(alto=20),
+            espacio(ancho=LLENAR),
+            boton("Button", "BtnTocar", "🔔 Tocar ahora", 13, AMARILLO, TEXTO, Height=40),
+            espacio(ancho=16),
+        ], Width=LLENAR, AlignVertical="2"),
+        espacio(alto=16),
     ], Width=LLENAR, BackgroundColor=AZUL)
 
     tarjeta_hora = comp("VerticalArrangement", "TarjetaHora", [
-        espacio(alto=16),
-        etiqueta("LblTituloHora", "🕒  Ajustar hora", 18, True, Width=ANCHO_INTERNO),
+        espacio(alto=14),
+        etiqueta("LblOverHora", "PROGRAMAR", 11, F_SEMI, AZUL, Width=ANCHO_INTERNO),
+        etiqueta("LblTituloHora", "Nueva hora de timbre", 17, F_SEMI, Width=ANCHO_INTERNO),
         espacio(alto=10),
-        comp("TimePicker", "SelectorHora", Text="07:30", FontSize=40, FontBold="True",
-             TextColor=AZUL, BackgroundColor=GRIS_FONDO, Shape="1",
-             Width=ANCHO_INTERNO, Height=90),
-        etiqueta("LblAyudaHora", "Toca la hora para cambiarla", 13, color=TEXTO_SEC,
-                 Width=ANCHO_INTERNO, TextAlignment="1"),
-        espacio(alto=10),
-        comp("Button", "BtnAnadir", Text="⏰  Añadir a la lista", FontSize=16,
-             FontBold="True", TextColor=TEXTO, BackgroundColor=AMARILLO, Shape="1",
-             Width=ANCHO_INTERNO, Height=52),
-        espacio(alto=16),
+        comp("HorizontalArrangement", "FilaHora", [
+            boton("TimePicker", "SelectorHora", "07:30", 32, GRIS_FONDO, AZUL,
+                  FontTypeface=F_BOLD, Width="-1046", Height=64),
+            espacio(ancho=10),
+            boton("Button", "BtnAnadir", "＋ Añadir", 16, AMARILLO, TEXTO,
+                  Width="-1035", Height=64),
+        ], Width=ANCHO_INTERNO, AlignVertical="2"),
+        espacio(alto=6),
+        etiqueta("LblAyudaHora", "Toca la hora para cambiarla", 12, F_REG, TEXTO_SEC,
+                 Width=ANCHO_INTERNO),
+        espacio(alto=14),
     ], Width=ANCHO_TARJETA, BackgroundColor=BLANCO, AlignHorizontal="3")
 
     tarjeta_lista = comp("VerticalArrangement", "TarjetaLista", [
-        espacio(alto=16),
+        espacio(alto=14),
         comp("HorizontalArrangement", "CabeceraLista", [
-            etiqueta("LblTituloLista", "Horarios programados", 18, True, Width=LLENAR),
-            etiqueta("LblContador", "0", 13, True, AZUL, BackgroundColor=AZUL_TINTE,
-                     Width=40, TextAlignment="1"),
+            comp("VerticalArrangement", "BloqueTituloLista", [
+                etiqueta("LblOverLista", "TU JORNADA", 11, F_SEMI, AZUL),
+                etiqueta("LblTituloLista", "Horarios programados", 17, F_SEMI),
+            ], Width=LLENAR),
+            etiqueta("LblContador", "0", 14, F_SEMI, AZUL, BackgroundColor=AZUL_TINTE,
+                     Width=40, Height=30, TextAlignment="1"),
         ], Width=ANCHO_INTERNO, AlignVertical="2"),
-        etiqueta("LblAyudaLista", "Toca un horario para eliminarlo 🗑", 13,
-                 color=TEXTO_SEC, Width=ANCHO_INTERNO),
-        espacio(alto=6),
+        espacio(alto=4),
+        etiqueta("LblAyudaLista", "Toca un horario para editarlo o eliminarlo", 12, F_REG,
+                 TEXTO_SEC, Width=ANCHO_INTERNO),
+        espacio(alto=8),
         espacio(alto=1, ancho=ANCHO_INTERNO, color=DIVISOR),
         comp("ListView", "ListaHorarios", Width=ANCHO_INTERNO, Height=LLENAR,
-             BackgroundColor=BLANCO, TextColor=TEXTO, FontSize=22,
+             BackgroundColor=BLANCO, ListViewLayout="4", ImageWidth=40, ImageHeight=40,
+             FontSize=20, FontTypeface=F_SEMI, TextColor=TEXTO,
+             FontSizeDetail=12, FontTypefaceDetail=F_REG, TextColorDetail=TEXTO_SEC,
              SelectionColor=AZUL_TINTE),
-        etiqueta("LblVacioIcono", "🔔", 40, Width=ANCHO_INTERNO, TextAlignment="1",
+        espacio(alto=20),
+        etiqueta("LblVacioIcono", "🔔", 36, Width=ANCHO_INTERNO, TextAlignment="1",
                  Visible="False"),
-        etiqueta("LblVacioTitulo", "Aún no hay horarios", 16, True, Width=ANCHO_INTERNO,
+        etiqueta("LblVacioTitulo", "Aún no hay horarios", 15, F_SEMI, Width=ANCHO_INTERNO,
                  TextAlignment="1", Visible="False"),
-        etiqueta("LblVacioAyuda", "Elige una hora y pulsa «Añadir a la lista»", 13,
-                 color=TEXTO_SEC, Width=ANCHO_INTERNO, TextAlignment="1",
-                 Visible="False"),
-        espacio(alto=10),
+        etiqueta("LblVacioAyuda", "Elige una hora y pulsa «＋ Añadir»", 12, F_REG, TEXTO_SEC,
+                 Width=ANCHO_INTERNO, TextAlignment="1", Visible="False"),
+        espacio(alto=8),
+        # Selector oculto: se abre desde los bloques al elegir "Editar"
+        comp("TimePicker", "SelectorEditar", Text="Editar", Visible="False"),
     ], Width=ANCHO_TARJETA, Height=LLENAR, BackgroundColor=BLANCO, AlignHorizontal="3")
 
     barra = comp("VerticalArrangement", "BarraInferior", [
         espacio(alto=10),
-        etiqueta("LblEstadoSync", "Conecta el ESP32 para guardar", 13, color=TEXTO_SEC,
+        etiqueta("LblEstadoSync", "Conecta el ESP32 para guardar", 12, F_REG, TEXTO_SEC,
                  Width=ANCHO_TARJETA),
-        espacio(alto=8),
-        comp("Button", "BtnGuardar", Text="🔄  Guardar Todo en ESP32", FontSize=17,
-             FontBold="True", TextColor=TEXTO, BackgroundColor=AMARILLO, Shape="1",
-             Width=ANCHO_TARJETA, Height=56),
-        espacio(alto=14),
+        espacio(alto=6),
+        boton("Button", "BtnGuardar", "🔄  Guardar Todo en ESP32", 16, AMARILLO, TEXTO,
+              Width=ANCHO_TARJETA, Height=56),
+        espacio(alto=12),
     ], Width=LLENAR, BackgroundColor=BLANCO, AlignHorizontal="3")
 
     no_visibles = [
         comp("BluetoothClient", "BluetoothClient1"),
-        comp("Clock", "RelojEstado", TimerInterval=3000),
+        comp("Clock", "RelojEstado", TimerInterval=1000),
         comp("TinyDB", "BaseDatos", Namespace="TimbreEscolar"),
         comp("Notifier", "Avisos"),
+        comp("Notifier", "AvisoTimbre"),
     ]
 
-    form = {
+    return {
         "$Name": "Screen1", "$Type": "Form", "$Version": VERSIONES["Form"],
         "Uuid": "0", "Title": "Timbre Escolar", "AppName": PROYECTO,
         "TitleVisible": "False", "BackgroundColor": GRIS_FONDO,
         "AlignHorizontal": "3", "Scrollable": "False", "Sizing": "Responsive",
         "Theme": "AppTheme.Light", "PrimaryColor": AZUL, "PrimaryColorDark": AZUL,
         "AccentColor": AMARILLO, "Icon": "ic_timbre.png", "ScreenOrientation": "portrait",
-        "VersionCode": "1", "VersionName": "1.0", "ShowListsAsJson": "True",
+        "VersionCode": "2", "VersionName": "2.0", "ShowListsAsJson": "True",
         "$Components": [
-            encabezado, espacio(alto=14), tarjeta_hora, espacio(alto=12),
+            encabezado, espacio(alto=12), tarjeta_hora, espacio(alto=12),
             tarjeta_lista, espacio(alto=12), espacio(alto=1, ancho=LLENAR, color=DIVISOR),
             barra,
         ] + no_visibles,
     }
-    return form
 
 
 def recorrer(c):
@@ -237,10 +287,11 @@ def falso(): return B("logic_boolean", {"BOOL": "FALSE"})
 def lista_vacia(): return B("lists_create_with", mutacion=M({"items": 0}))
 
 
-def color(r, g, b):
-    rgb = B("lists_create_with", valores={"ADD0": num(r), "ADD1": num(g), "ADD2": num(b)},
-            mutacion=M({"items": 3}))
-    return B("color_make_color", valores={"COLORLIST": rgb})
+def color(*rgba):
+    """make color [r g b] o [r g b alfa]."""
+    lst = B("lists_create_with", valores={"ADD%d" % i: num(v) for i, v in enumerate(rgba)},
+            mutacion=M({"items": len(rgba)}))
+    return B("color_make_color", valores={"COLORLIST": lst})
 
 
 def unir(*partes):
@@ -259,16 +310,26 @@ def param(nombre):
 
 def no(v): return B("logic_negate", valores={"BOOL": v})
 def igual(a, b): return B("logic_compare", {"OP": "EQ"}, {"A": a, "B": b})
+def distinto(a, b): return B("logic_compare", {"OP": "NEQ"}, {"A": a, "B": b})
 def texto_mayor(a, b): return B("text_compare", {"OP": "GT"}, {"TEXT1": a, "TEXT2": b})
 def largo(lst): return B("lists_length", valores={"LIST": lst})
 def vacia(lst): return B("lists_is_empty", valores={"LIST": lst})
 def esta_en(item, lst): return B("lists_is_in", valores={"ITEM": item, "LIST": lst})
 def elemento(lst, i): return B("lists_select_item", valores={"LIST": lst, "NUM": i})
 def unir_con(sep, lst): return B("lists_join_with_separator", valores={"SEPARATOR": sep, "LIST": lst})
+def dividir(t, sep): return B("text_split", {"OP": "SPLIT"}, {"TEXT": t, "AT": sep})
+
+
+def y(a, b):
+    return B("logic_operation", {"OP": "AND"}, {"A": a, "B": b}, mutacion=M({"items": 2}))
 
 
 def mas(a, b):
     return B("math_add", valores={"NUM0": a, "NUM1": b}, mutacion=M({"items": 2}))
+
+
+def agregar(lst, item):
+    return B("lists_add_items", valores={"LIST": lst, "ITEM0": item}, mutacion=M({"items": 1}))
 
 
 # --- componentes
@@ -299,13 +360,18 @@ def evento(tipo, inst, nombre, cuerpo):
 
 
 # --- control
-def si(cond, entonces, sino=None):
-    sent = {"DO0": entonces}
-    mut = {}
+def si(cond, entonces, sino=None, sino_si=()):
+    """if cond / else if (c, cuerpo)... / else."""
+    valores, sent, mut = {"IF0": cond}, {"DO0": entonces}, {}
+    for i, (c, cuerpo) in enumerate(sino_si, start=1):
+        valores["IF%d" % i] = c
+        sent["DO%d" % i] = cuerpo
+    if sino_si:
+        mut["elseif"] = len(sino_si)
     if sino:
         sent["ELSE"] = sino
         mut["else"] = 1
-    return B("controls_if", valores={"IF0": cond}, sentencias=sent, mutacion=M(mut))
+    return B("controls_if", valores=valores, sentencias=sent, mutacion=M(mut))
 
 
 def global_(nombre, valor):
@@ -334,12 +400,19 @@ def para_rango(var, ini, fin, paso, cuerpo):
              {"DO": cuerpo})
 
 
-def proc(nombre, cuerpo):
-    return B("procedures_defnoreturn", {"NAME": nombre}, sentencias={"STACK": cuerpo})
+def proc(nombre, cuerpo, arg=None):
+    if arg is None:
+        return B("procedures_defnoreturn", {"NAME": nombre}, sentencias={"STACK": cuerpo})
+    return B("procedures_defnoreturn", {"NAME": nombre, "VAR0": arg},
+             sentencias={"STACK": cuerpo},
+             mutacion=M({}, ET.Element("arg", {"name": arg})))
 
 
-def ejecutar(nombre):
-    return B("procedures_callnoreturn", {"PROCNAME": nombre}, mutacion=M({"name": nombre}))
+def ejecutar(nombre, arg=None, valor=None):
+    if arg is None:
+        return B("procedures_callnoreturn", {"PROCNAME": nombre}, mutacion=M({"name": nombre}))
+    return B("procedures_callnoreturn", {"PROCNAME": nombre}, {"ARG0": valor},
+             mutacion=M({"name": nombre}, ET.Element("arg", {"name": arg})))
 
 
 def aviso(mensaje):
@@ -357,13 +430,16 @@ def bloques():
     C_AZUL, C_AMARILLO, C_BLANCO = (0, 51, 160), (255, 209, 0), (255, 255, 255)
     C_TEXTO, C_SEC, C_ROJO = (30, 41, 59), (100, 116, 139), (197, 48, 48)
     C_DESHAB_FONDO, C_DESHAB_TEXTO = (226, 232, 240), (148, 163, 184)
-    vis = lambda nombre, v: poner("Label", nombre, "Visible", v() if callable(v) else v)
+    C_VIDRIO, C_BLANCO_TENUE = (255, 255, 255, 40), (255, 255, 255, 150)
+    hay_vacia = lambda: vacia(g("horarios"))
+    vis = lambda nombre, v: poner("Label", nombre, "Visible", v)
 
     tops = [
-        # Variables globales
+        # ---------------------------------------------------- variables
         global_("horarios", lista_vacia()),
         global_("pendientes", falso()),
-        global_("indiceBorrar", num(0)),
+        global_("indiceSel", num(0)),
+        global_("conectadoAntes", falso()),
 
         # Al abrir la app: carga los horarios guardados en el teléfono
         evento("Form", "Screen1", "Initialize", [
@@ -371,33 +447,73 @@ def bloques():
                                        txt("horarios"), lista_vacia())),
             ejecutar("actualizarLista"),
             ejecutar("actualizarEstado"),
+            ejecutar("actualizarReloj"),
         ]),
 
-        # Muestra la lista con su ícono, el contador y el estado vacío
+        # ---------------------------------------------------- procedimientos
+        # Lista con ícono de alarma, número de timbre y pista de edición
         proc("actualizarLista", [
             local("vista", lista_vacia(), [
-                para_cada("hora", g("horarios"), [
-                    B("lists_add_items", valores={"LIST": loc("vista"),
-                                                  "ITEM0": unir(txt("⏰   "), loc("hora"))},
-                      mutacion=M({"items": 1})),
+                para_rango("i", num(1), largo(g("horarios")), num(1), [
+                    agregar(loc("vista"), llamar(
+                        "ListView", "ListaHorarios", "CreateElement",
+                        elemento(g("horarios"), loc("i")),
+                        unir(txt("Timbre "), loc("i"), txt(" · toca para editar o eliminar")),
+                        txt("ic_alarma.png"))),
                 ]),
                 poner("ListView", "ListaHorarios", "Elements", loc("vista")),
             ]),
             poner("Label", "LblContador", "Text", largo(g("horarios"))),
-            poner("ListView", "ListaHorarios", "Visible", no(vacia(g("horarios")))),
-            vis("LblVacioIcono", lambda: vacia(g("horarios"))),
-            vis("LblVacioTitulo", lambda: vacia(g("horarios"))),
-            vis("LblVacioAyuda", lambda: vacia(g("horarios"))),
-            poner("Label", "LblAyudaLista", "Visible", no(vacia(g("horarios")))),
+            poner("ListView", "ListaHorarios", "Visible", no(hay_vacia())),
+            vis("LblAyudaLista", no(hay_vacia())),
+            vis("LblVacioIcono", hay_vacia()),
+            vis("LblVacioTitulo", hay_vacia()),
+            vis("LblVacioAyuda", hay_vacia()),
+            ejecutar("actualizarProximo"),
         ]),
 
-        # Pinta el badge Bluetooth y el botón Guardar según la conexión
+        # Tarjeta "Próximo timbre" del encabezado
+        proc("actualizarProximo", [
+            local("ahora", ahora("HH:mm"), [
+                local("proximo", txt(""), [
+                    para_cada("hora", g("horarios"), [
+                        si(y(igual(loc("proximo"), txt("")),
+                             texto_mayor(loc("hora"), loc("ahora"))), [
+                            asignar_loc("proximo", loc("hora")),
+                        ]),
+                    ]),
+                    si(hay_vacia(), [
+                        poner("Label", "LblProximoValor", "Text", txt("--:--")),
+                        poner("Label", "LblProximoDetalle", "Text", txt("Sin horarios")),
+                    ], sino_si=[(igual(loc("proximo"), txt("")), [
+                        poner("Label", "LblProximoValor", "Text", elemento(g("horarios"), num(1))),
+                        poner("Label", "LblProximoDetalle", "Text", txt("Mañana")),
+                    ])], sino=[
+                        poner("Label", "LblProximoValor", "Text", loc("proximo")),
+                        poner("Label", "LblProximoDetalle", "Text", txt("Hoy")),
+                    ]),
+                ]),
+            ]),
+        ]),
+
+        # Reloj en vivo del encabezado
+        proc("actualizarReloj", [
+            poner("Label", "LblHoraValor", "Text", ahora("HH:mm:ss")),
+            poner("Label", "LblHoraDetalle", "Text", ahora("EEEE d MMM")),
+            ejecutar("actualizarProximo"),
+        ]),
+
+        # Badge Bluetooth, botón "Tocar ahora" y botón Guardar según la conexión
         proc("actualizarEstado", [
+            asignar("conectadoAntes", conectado()),
             si(conectado(), [
                 poner("HorizontalArrangement", "BadgeBT", "BackgroundColor", color(*C_AMARILLO)),
                 poner("Image", "ImgBT", "Picture", txt("bt_on.png")),
                 poner("ListPicker", "LP_Conectar", "Text", txt("Conectado · ESP32")),
                 poner("ListPicker", "LP_Conectar", "TextColor", color(*C_AZUL)),
+                poner("Button", "BtnTocar", "Enabled", verdadero()),
+                poner("Button", "BtnTocar", "BackgroundColor", color(*C_AMARILLO)),
+                poner("Button", "BtnTocar", "TextColor", color(*C_TEXTO)),
                 poner("Button", "BtnGuardar", "Enabled", verdadero()),
                 poner("Button", "BtnGuardar", "BackgroundColor", color(*C_AMARILLO)),
                 poner("Button", "BtnGuardar", "TextColor", color(*C_TEXTO)),
@@ -411,78 +527,108 @@ def bloques():
             ], [
                 poner("HorizontalArrangement", "BadgeBT", "BackgroundColor", color(*C_BLANCO)),
                 poner("Image", "ImgBT", "Picture", txt("bt_off.png")),
-                poner("ListPicker", "LP_Conectar", "Text", txt("Desconectado · Toca para conectar")),
+                poner("ListPicker", "LP_Conectar", "Text", txt("Desconectado · Conectar")),
                 poner("ListPicker", "LP_Conectar", "TextColor", color(*C_ROJO)),
+                poner("Button", "BtnTocar", "Enabled", falso()),
+                poner("Button", "BtnTocar", "BackgroundColor", color(*C_VIDRIO)),
+                poner("Button", "BtnTocar", "TextColor", color(*C_BLANCO_TENUE)),
                 poner("Button", "BtnGuardar", "Enabled", falso()),
                 poner("Button", "BtnGuardar", "BackgroundColor", color(*C_DESHAB_FONDO)),
                 poner("Button", "BtnGuardar", "TextColor", color(*C_DESHAB_TEXTO)),
-                poner("Label", "LblEstadoSync", "Text", txt("Conecta el ESP32 para guardar")),
+                poner("Label", "LblEstadoSync", "Text", txt("Conecta el ESP32 para guardar o tocar el timbre")),
                 poner("Label", "LblEstadoSync", "TextColor", color(*C_SEC)),
             ]),
         ]),
 
-        # Guarda la lista en la memoria del teléfono
-        proc("guardarEnTelefono", [
+        # Inserta una hora en la lista manteniendo el orden cronológico
+        proc("insertarOrdenado", [
+            local("posicion", mas(largo(g("horarios")), num(1)), [
+                para_rango("i", num(1), largo(g("horarios")), num(1), [
+                    si(y(texto_mayor(elemento(g("horarios"), loc("i")), loc("hora")),
+                         igual(loc("posicion"), mas(largo(g("horarios")), num(1)))), [
+                        asignar_loc("posicion", loc("i")),
+                    ]),
+                ]),
+                B("lists_insert_item", valores={"LIST": g("horarios"),
+                                                "INDEX": loc("posicion"),
+                                                "ITEM": loc("hora")}),
+            ]),
+        ], arg="hora"),
+
+        # Después de añadir, editar o borrar: guardar y refrescar la pantalla
+        proc("trasCambio", [
+            asignar("pendientes", verdadero()),
             llamar("TinyDB", "BaseDatos", "StoreValue", txt("horarios"), g("horarios")),
+            ejecutar("actualizarLista"),
+            ejecutar("actualizarEstado"),
         ]),
 
-        # Selector de hora: muestra siempre HH:mm (24 h)
+        # ---------------------------------------------------- añadir
         evento("TimePicker", "SelectorHora", "AfterTimeSet", [
             poner("TimePicker", "SelectorHora", "Text",
                   llamar("Clock", "RelojEstado", "FormatDateTime",
                          leer("TimePicker", "SelectorHora", "Instant"), txt("HH:mm"))),
         ]),
 
-        # Añadir a la lista (sin duplicados y en orden cronológico)
         evento("Button", "BtnAnadir", "Click", [
             local("hora", leer("TimePicker", "SelectorHora", "Text"), [
                 si(esta_en(loc("hora"), g("horarios")), [
                     aviso(txt("Ese horario ya está en la lista")),
                 ], [
-                    local("posicion", mas(largo(g("horarios")), num(1)), [
-                        para_rango("i", num(1), largo(g("horarios")), num(1), [
-                            si(B("logic_operation", {"OP": "AND"}, {
-                                "A": texto_mayor(elemento(g("horarios"), loc("i")), loc("hora")),
-                                "B": igual(loc("posicion"), mas(largo(g("horarios")), num(1))),
-                            }, mutacion=M({"items": 2})), [
-                                asignar_loc("posicion", loc("i")),
-                            ]),
-                        ]),
-                        B("lists_insert_item", valores={"LIST": g("horarios"),
-                                                        "INDEX": loc("posicion"),
-                                                        "ITEM": loc("hora")}),
-                    ]),
-                    asignar("pendientes", verdadero()),
-                    ejecutar("guardarEnTelefono"),
-                    ejecutar("actualizarLista"),
-                    ejecutar("actualizarEstado"),
+                    ejecutar("insertarOrdenado", "hora", loc("hora")),
+                    ejecutar("trasCambio"),
                     aviso(unir(txt("Horario "), loc("hora"), txt(" añadido"))),
                 ]),
             ]),
         ]),
 
-        # Tocar un horario de la lista: pedir confirmación para borrarlo
+        # ---------------------------------------------------- editar / eliminar
         evento("ListView", "ListaHorarios", "AfterPicking", [
-            asignar("indiceBorrar", leer("ListView", "ListaHorarios", "SelectionIndex")),
-            llamar("Notifier", "Avisos", "ShowChooseDialog",
-                   unir(txt("¿Eliminar el horario de las "),
-                        elemento(g("horarios"), g("indiceBorrar")), txt("?")),
-                   txt("Eliminar horario"), txt("Eliminar"), txt("Cancelar"), falso()),
-        ]),
-
-        evento("Notifier", "Avisos", "AfterChoosing", [
-            si(igual(param("choice"), txt("Eliminar")), [
-                B("lists_remove_item", valores={"LIST": g("horarios"),
-                                                "INDEX": g("indiceBorrar")}),
-                asignar("pendientes", verdadero()),
-                ejecutar("guardarEnTelefono"),
-                ejecutar("actualizarLista"),
-                ejecutar("actualizarEstado"),
-                aviso(txt("Horario eliminado")),
+            asignar("indiceSel", leer("ListView", "ListaHorarios", "SelectionIndex")),
+            local("hora", elemento(g("horarios"), g("indiceSel")), [
+                llamar("Notifier", "Avisos", "ShowChooseDialog",
+                       unir(txt("¿Qué quieres hacer con el timbre de las "), loc("hora"), txt("?")),
+                       unir(txt("Horario "), loc("hora")),
+                       txt(OPC_EDITAR), txt(OPC_ELIMINAR), verdadero()),
             ]),
         ]),
 
-        # Badge Bluetooth: lista los dispositivos emparejados
+        evento("Notifier", "Avisos", "AfterChoosing", [
+            si(igual(param("choice"), txt(OPC_EDITAR)), [
+                local("partes", dividir(elemento(g("horarios"), g("indiceSel")), txt(":")), [
+                    llamar("TimePicker", "SelectorEditar", "SetTimeToDisplay",
+                           elemento(loc("partes"), num(1)), elemento(loc("partes"), num(2))),
+                    llamar("TimePicker", "SelectorEditar", "LaunchPicker"),
+                ]),
+            ], sino_si=[(igual(param("choice"), txt(OPC_ELIMINAR)), [
+                B("lists_remove_item", valores={"LIST": g("horarios"),
+                                                "INDEX": g("indiceSel")}),
+                ejecutar("trasCambio"),
+                aviso(txt("Horario eliminado")),
+            ])]),
+        ]),
+
+        evento("TimePicker", "SelectorEditar", "AfterTimeSet", [
+            local("nueva", llamar("Clock", "RelojEstado", "FormatDateTime",
+                                  leer("TimePicker", "SelectorEditar", "Instant"), txt("HH:mm")), [
+                local("vieja", elemento(g("horarios"), g("indiceSel")), [
+                    si(distinto(loc("nueva"), loc("vieja")), [
+                        si(esta_en(loc("nueva"), g("horarios")), [
+                            aviso(txt("Ese horario ya está en la lista")),
+                        ], [
+                            B("lists_remove_item", valores={"LIST": g("horarios"),
+                                                            "INDEX": g("indiceSel")}),
+                            ejecutar("insertarOrdenado", "hora", loc("nueva")),
+                            ejecutar("trasCambio"),
+                            aviso(unir(txt("Horario cambiado: "), loc("vieja"), txt(" → "),
+                                       loc("nueva"))),
+                        ]),
+                    ]),
+                ]),
+            ]),
+        ]),
+
+        # ---------------------------------------------------- Bluetooth
         evento("ListPicker", "LP_Conectar", "BeforePicking", [
             poner("ListPicker", "LP_Conectar", "Elements", leer(*BT, "AddressesAndNames")),
         ]),
@@ -498,7 +644,25 @@ def bloques():
             ejecutar("actualizarEstado"),
         ]),
 
-        # Guardar Todo en ESP32: envía la hora actual y la lista
+        # ---------------------------------------------------- tocar el timbre ahora
+        evento("Button", "BtnTocar", "Click", [
+            si(no(conectado()), [
+                aviso(txt("Primero conecta el ESP32")),
+            ], [
+                llamar("Notifier", "AvisoTimbre", "ShowChooseDialog",
+                       txt("El timbre sonará ahora mismo en toda la institución."),
+                       txt("¿Tocar el timbre?"), txt(OPC_TOCAR), txt("Cancelar"), falso()),
+            ]),
+        ]),
+
+        evento("Notifier", "AvisoTimbre", "AfterChoosing", [
+            si(igual(param("choice"), txt(OPC_TOCAR)), [
+                llamar(*BT, "SendText", txt("TOCAR\\n")),
+                aviso(txt("🔔 Timbre activado")),
+            ]),
+        ]),
+
+        # ---------------------------------------------------- guardar en el ESP32
         evento("Button", "BtnGuardar", "Click", [
             si(no(conectado()), [
                 aviso(txt("Primero conecta el ESP32")),
@@ -514,9 +678,10 @@ def bloques():
             ]),
         ]),
 
-        # Revisa la conexión cada 3 s para detectar desconexiones
+        # Cada segundo: reloj, próximo timbre y detección de desconexión
         evento("Clock", "RelojEstado", "Timer", [
-            si(no(conectado()), [ejecutar("actualizarEstado")]),
+            ejecutar("actualizarReloj"),
+            si(distinto(conectado(), g("conectadoAntes")), [ejecutar("actualizarEstado")]),
         ]),
 
         # Errores de Bluetooth: avisar sin cerrar la app
@@ -528,8 +693,8 @@ def bloques():
 
     xml = ET.Element("xml", {"xmlns": "http://www.w3.org/1999/xhtml"})
     for i, t in enumerate(tops):
-        t.set("x", str(20 + (i % 3) * 520))
-        t.set("y", str(20 + (i // 3) * 420))
+        t.set("x", str(20 + (i % 3) * 560))
+        t.set("y", str(20 + (i // 3) * 520))
         xml.append(t)
     ET.SubElement(xml, "yacodeblocks", {"ya-version": YA_VERSION,
                                         "language-version": BLOCKS_VERSION})
@@ -538,18 +703,29 @@ def bloques():
 
 # ================================================================ empaquetado
 def validar(form, xml):
-    nombres = {c["$Name"]: c["$Type"] for c in recorrer(form)}
-    assert len(nombres) == sum(1 for _ in recorrer(form)), "nombres de componentes repetidos"
+    todos = list(recorrer(form))
+    nombres = {c["$Name"]: c["$Type"] for c in todos}
+    assert len(nombres) == len(todos), "nombres de componentes repetidos"
     for m in xml.iter("mutation"):
         inst = m.get("instance_name")
         if inst:
             assert inst in nombres, "componente inexistente: " + inst
             assert nombres[inst] == m.get("component_type"), "tipo incorrecto: " + inst
-    definidos = {f.text for b in xml.iter("block") if b.get("type") == "procedures_defnoreturn"
-                 for f in b.findall("field")}
+    definidos = {b.find("field").text for b in xml.iter("block")
+                 if b.get("type") == "procedures_defnoreturn"}
     for b in xml.iter("block"):
         if b.get("type") == "procedures_callnoreturn":
             assert b.find("field").text in definidos, "procedimiento sin definir"
+    globales = {b.find("field").text for b in xml.iter("block")
+                if b.get("type") == "global_declaration"}
+    for f in xml.iter("field"):
+        if f.get("name") == "VAR" and (f.text or "").startswith("global "):
+            assert f.text[7:] in globales, "variable global sin definir: " + f.text
+    for c in todos:
+        for k in ("Picture", "Icon", "FontTypeface", "FontTypefaceDetail"):
+            v = c.get(k)
+            if v and not v.isdigit():
+                assert v in ASSETS, "asset no incluido: " + v
     for a in ASSETS:
         assert os.path.exists(os.path.join(AQUI, "assets", a)), "falta " + a
 
@@ -573,8 +749,8 @@ def main():
         "assets=../assets",
         "source=../src",
         "build=../build",
-        "versioncode=1",
-        "versionname=1.0",
+        "versioncode=2",
+        "versionname=2.0",
         "useslocation=False",
         "aname=" + PROYECTO,
         "sizing=Responsive",
